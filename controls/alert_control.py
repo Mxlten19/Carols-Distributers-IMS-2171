@@ -1,5 +1,11 @@
+from itertools import product
+
+from flask import session
+
+from flask import session
+
 from entities.connection import SessionLocal
-from entities.models import Alert
+from entities.models import Alert, Product
 
 class AlertControl:
 
@@ -19,6 +25,40 @@ class AlertControl:
         } for a in alerts]
         session.close()
         return data
+
+    @staticmethod
+    def check_low_stock(product_id):
+        from entities.models import Product, Alert
+        session = SessionLocal()
+        product = session.query(Product).filter_by(product_id=product_id).first()
+        if not product:
+            session.close()
+        return
+
+    if product.current_quantity <= product.reorder_threshold:
+        existing = session.query(Alert).filter_by(
+            product_id=product_id, status="active"
+        ).first()
+        if not existing:
+            alert = Alert(
+                product_id=product_id,
+                alert_type="LOW_STOCK",
+                message=f"{product.name} is low on stock (Qty: {product.current_quantity})",
+                status="active"
+            )
+            session.add(alert)
+            session.commit()
+    session.close()
+
+    @staticmethod
+    def check_all_products():
+        from entities.models import Product
+        session = SessionLocal()
+        products = session.query(Product).all()
+        ids = [p.product_id for p in products]
+        session.close()
+        for pid in ids:
+            AlertControl.check_low_stock(pid)
 
     @staticmethod
     def delete_alert(alert_id):

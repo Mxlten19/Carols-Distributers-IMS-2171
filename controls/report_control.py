@@ -140,6 +140,16 @@ class ReportControl:
         }
     
     @staticmethod
+    def generate_monthly_automatic_report():
+        from datetime import datetime
+        report_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        try:
+            result = ReportControl.generate_inventory_pdf(report_date)
+            print(f"Monthly report generated: {result['filename']}")
+        except Exception as e:
+            print(f"Error generating monthly report: {e}")
+    
+    @staticmethod
     def list_reports():
         """List all generated PDF reports"""
         reports_dir = "reports"
