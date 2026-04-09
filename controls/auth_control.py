@@ -84,7 +84,7 @@ class AuthControl:
             return {
                 "token": token,
                 "role": user.role.role_name,
-                "username": user.username
+                "username": user.username,
                 "user_id": user.user_id
             }
 
