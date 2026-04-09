@@ -1,215 +1,368 @@
-from entities.connection import SessionLocal
-from entities.models import Product, Category
-from controls.alert_control import AlertControl
-from datetime import datetime
-from sqlalchemy.exc import IntegrityError
+//---------------------------------------------
+// CONSTANTS
+//---------------------------------------------
+const DEFAULT_CATEGORIES = [
+    'FOOD',
+    'BEVERAGES',
+    'HOUSEHOLD ITEMS',
+    'CLEANING SUPPLIES',
+    'TOILETRIES',
+    'MISCELLANEOUS'
+];
+
+//---------------------------------------------
+// LOAD ALL PRODUCTS INTO TABLE
+//---------------------------------------------
+async function loadProducts() {
+
+    let data = await apiGet("/inventory/");
+    let table = document.getElementById("product-table");
+
+    table.innerHTML = "";
+
+    data.forEach(p => {
+
+        table.innerHTML += `
+            <tr>
+                <td>${p.id}</td>
+                <td>${p.name}</td>
+                <td>$${p.price}</td>
+                <td>${p.qty}</td>
+                <td>${p.category}</td>
+                <td>
+                    <button class="btn-secondary" onclick="viewProductDetails('${p.product_id}')">
+                        View
+                    </button>
+                </td>
+            </tr>
+        `;
+
+    });
+}
+
+//---------------------------------------------
+// FETCH CATEGORIES
+//---------------------------------------------
+async function fetchCategories(){
+    return DEFAULT_CATEGORIES;
+}
+
+//---------------------------------------------
+// OPEN ADD PRODUCT MODAL
+//---------------------------------------------
+async function openAddProductModal(){
+
+    document.getElementById("modal-title").innerText = "Add Product";
+
+    let categories = await fetchCategories();
+
+    let opts = categories
+        .map(c => `<option value="${c}">${c}</option>`)
+        .join("");
+
+    document.getElementById("modal-body").innerHTML = `
+        <input id="p-name" placeholder="Product Name" class="input" />
+        <input id="p-price" placeholder="Price" type="number" class="input" />
+        <input id="p-qty" placeholder="Quantity" type="number" class="input" />
+        <input id="p-threshold" placeholder="Reorder Threshold" type="number" class="input" />
+
+        <select id="p-category" class="input">
+            <option disabled selected>Select Category</option>
+            ${opts}
+        </select>
+    `;
+
+    document.getElementById("modal-save-btn").onclick = addProduct;
+
+    openModal();
+}
+
+//---------------------------------------------
+// ADD PRODUCT 
+//---------------------------------------------
+async function addProduct(){
+
+    clearError();
+
+    let name = document.getElementById("p-name");
+    let price = document.getElementById("p-price");
+    let qty = document.getElementById("p-qty");
+    let threshold = document.getElementById("p-threshold");
+    let category = document.getElementById("p-category");
+
+    let data = {
+        name: name.value.trim(),
+        price: parseFloat(price.value),
+        quantity: parseInt(qty.value),
+        reorder_threshold: parseInt(threshold.value),
+        category: category.value
+    };
+
+    let res = await apiPost("/inventory/product", data);
+
+    if(res?.error){
+
+        showFormError(res.error);
+
+        // highlights problem fields
+        if (!data.name) markError("p-name");
+        if (isNaN(data.price)) markError("p-price");
+        if (isNaN(data.quantity)) markError("p-qty");
+        if (isNaN(data.reorder_threshold)) markError("p-threshold");
+        if (!data.category) markError("p-category");
+
+        return;
+    }
+
+    alert(res.message);
+
+    closeModal();
+    loadProducts();
+}
 
 
-class InventoryControl:
+//---------------------------------------------
+// SELECT PRODUCT TO EDIT
+//---------------------------------------------
+async function openSelectProductForEdit(){
 
-    # ------------------------------------------------------------
-    # GET ALL PRODUCTS
-    # ------------------------------------------------------------
-    @staticmethod
-    def get_all_products():
-        session = SessionLocal()
-        products = session.query(Product).all()
+    let products = await apiGet("/inventory/");
 
-        data = []
-        for p in products:
-            data.append({
-                "product_id": p.product_id,          # DB numeric id
-                "id": p.code,                        # Custom display ID: BEV_001
-                "name": p.name,
-                "category": p.category.name if p.category else "",
-                "price": p.price,
-                "qty": p.current_quantity,
-                "reorder_threshold": p.reorder_threshold
-            })
+    let dropdown = `
+        <select id="product-select" class="input">
+            ${products.map(p => 
+                `<option value="${p.product_id}">${p.name}</option>`
+            ).join("")}
+        </select>
+    `;
 
-        session.close()
-        return data
+    document.getElementById("modal-title").innerText = "Select Product to Edit";
+    document.getElementById("modal-body").innerHTML = dropdown;
 
+    document.getElementById("modal-save-btn").onclick = () => {
 
-    # ------------------------------------------------------------
-    # GET ALL CATEGORIES
-    # ------------------------------------------------------------
-    @staticmethod
-    def get_all_categories():
-        session = SessionLocal()
-        categories = session.query(Category).order_by(Category.name).all()
+        let id = document.getElementById("product-select").value;
 
-        data = [{"id": c.category_id, "name": c.name} for c in categories]
+        let selected = products.find(p => 
+            String(p.product_id) === String(id)
+        );
 
-        session.close()
-        return data
+        openEditProductModal(selected);
+    };
 
+    openModal();
+}
 
-    # ------------------------------------------------------------
-    # ADD PRODUCT
-    # Generates product IDs like BEV_001, BEV_002, FOO_001, etc.
-    # Rejects duplicates by name (case-insensitive).
-    # ------------------------------------------------------------
-    @staticmethod
-    def add_product(data, user_id):
-        session = SessionLocal()
+//---------------------------------------------
+// OPEN EDIT PRODUCT MODAL
+//---------------------------------------------
+async function openEditProductModal(product){
 
-        name = data.get("name")
-        category_name = data.get("category")
-        price = data.get("price")
-        qty = data.get("quantity")
-        threshold = data.get("reorder_threshold")
+    document.getElementById("modal-title").innerText = "Edit Product";
 
-        # ---- Validation ----
-        if not name or price is None or qty is None or not category_name:
-            session.close()
-            return {"error": "Missing required fields"}
+    let categories = await fetchCategories();
 
-        try:
-            threshold = int(threshold)
-        except (TypeError, ValueError):
-            threshold = 0
+    let opts = categories.map(c =>
+        `<option value="${c}" ${c === product.category ? "selected" : ""}>${c}</option>`
+    ).join("");
 
-        # ---- FIX: Duplicate name check (case-insensitive) ----
-        existing = session.query(Product).filter(
-            Product.name.ilike(name.strip())
-        ).first()
-        if existing:
-            session.close()
-            return {"error": f"A product named '{name}' already exists. Please use a different name."}
+    document.getElementById("modal-body").innerHTML = `
+        <input id="p-name" value="${product.name}" class="input" />
+        <input id="p-price" value="${product.price}" type="number" class="input" />
+        <input id="p-qty" value="${product.qty}" type="number" class="input" />
+        <input id="p-threshold" value="${product.reorder_threshold ?? ""}" type="number" class="input" />
 
-        # ---- Validate category ----
-        category = session.query(Category).filter_by(name=category_name).first()
-        if not category:
-            session.close()
-            return {"error": "Invalid category selected"}
+        <select id="p-category" class="input">
+            ${opts}
+        </select>
+    `;
 
-        prefix = category.code_prefix
+    document.getElementById("modal-save-btn").onclick = () =>
+        updateProduct(product.product_id);
 
-        last_product = (
-            session.query(Product)
-            .filter(Product.category_id == category.category_id)
-            .filter(Product.code.like(f"{prefix}_%"))
-            .order_by(Product.product_id.desc())
-            .first()
-        )
+    openModal();
+}
 
-        if last_product:
-            try:
-                last_number = int(last_product.code.split("_")[-1])
-            except:
-                last_number = 0
-        else:
-            last_number = 0
+//---------------------------------------------
+// UPDATE PRODUCT
+//---------------------------------------------
+async function updateProduct(id){
 
-        next_number = last_number + 1
-        code = f"{prefix}_{str(next_number).zfill(3)}"
+    let data = {
+        name: document.getElementById("p-name").value,
+        price: parseFloat(document.getElementById("p-price").value),
+        current_quantity: parseInt(document.getElementById("p-qty").value),
+        reorder_threshold: parseInt(document.getElementById("p-threshold").value),
+        category: document.getElementById("p-category").value
+    };
 
-        product = Product(
-            name=name,
-            category_id=category.category_id,
-            price=price,
-            current_quantity=qty,
-            reorder_threshold=threshold,
-            code=code,
-            updated_by_user_id=user_id
-        )
+    let res = await apiPut(`/inventory/product/${id}`, data);
 
-        session.add(product)
+    if(res.error){
+        alert(res.error);
+        return;
+    }
 
-        try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            session.close()
-            return {"error": "A product with that name already exists."}
+    alert(res.message);
 
-        # ---- Alert check ----
-        AlertControl.check_low_stock(product.product_id)
+    closeModal();
+    loadProducts();
+}
 
-        session.close()
-        return {
-            "message": "Product added successfully",
-            "product_code": code
-        }
+// ---------------------------------------------
+// SELECT PRODUCT TO DELETE
+// ---------------------------------------------
+async function openSelectProductForDelete() {
+    let products = await apiGet("/inventory/");
+
+    let dropdown = `
+        <select id="product-select" class="input">
+            ${products.map(p =>
+                `<option value="${p.product_id}">${p.name}</option>`
+            ).join("")}
+        </select>
+    `;
+
+    document.getElementById("modal-title").innerText = "Select Product to Remove";
+    document.getElementById("modal-body").innerHTML = dropdown;
+
+    document.getElementById("modal-save-btn").onclick = null;
+
+    document.getElementById("modal-save-btn").onclick = () => {
+        let id = document.getElementById("product-select").value;
+        openDeleteProductModal(id);
+    };
+
+    openModal();
+}
 
 
-    # ------------------------------------------------------------
-    # UPDATE PRODUCT
-    # ------------------------------------------------------------
-    @staticmethod
-    def update_product(product_id, data, user_id):
-        session = SessionLocal()
+// ---------------------------------------------
+// DELETE CONFIRMATION
+// ---------------------------------------------
+function openDeleteProductModal(id) {
 
-        product = (
-            session
-            .query(Product)
-            .filter_by(product_id=product_id)
-            .first()
-        )
+    document.getElementById("modal-title").innerText = "Confirm Delete";
+    document.getElementById("modal-body").innerHTML =
+        `<p>Are you sure you want to delete this product?</p>`;
 
-        if not product:
-            session.close()
-            return {"error": "Product not found"}
+    // Ensure the save button is always visible in the confirmation step
+    document.getElementById("modal-save-btn").style.display = "inline-block";
 
-        # ---- Handle category ----
-        if "category" in data:
-            category_name = data["category"]
+    document.getElementById("modal-save-btn").onclick = null;
 
-            category = session.query(Category).filter_by(name=category_name).first()
-            if not category:
-                session.close()
-                return {"error": "Invalid category selected"}
+    document.getElementById("modal-save-btn").onclick = () => deleteProduct(id);
 
-            product.category_id = category.category_id
+    openModal();
+}
 
 
-        # ---- Field updates ----
-        if "name" in data:
-            product.name = data["name"]
+// ---------------------------------------------
+// DELETE PRODUCT
+// ---------------------------------------------
+async function deleteProduct(id) {
+    let res = await apiDelete(`/inventory/product/${id}`);
 
-        if "price" in data:
-            product.price = data["price"]
+    if(res.error){
+        alert(res.error);
+        return;
+    }
 
-        if "current_quantity" in data:
-            try:
-                product.current_quantity = int(data["current_quantity"])
-            except:
-                pass
+    alert(res.message);   
 
-        if "reorder_threshold" in data:
-            try:
-                product.reorder_threshold = int(data["reorder_threshold"])
-            except:
-                pass
+    closeModal();
+    loadProducts();
 
-        product.updated_at = datetime.utcnow()
-        product.updated_by_user_id = user_id
-
-        session.commit()
-
-        # ---- Alert check ----
-        AlertControl.check_low_stock(product.product_id)
-
-        session.close()
-        return {"message": "Product updated successfully"}
+}
 
 
-    # ------------------------------------------------------------
-    # DELETE PRODUCT
-    # ------------------------------------------------------------
-    @staticmethod
-    def delete_product(product_id):
-        session = SessionLocal()
+//---------------------------------------------
+// PRODUCT VIEW
+//---------------------------------------------
+async function viewProductDetails(productId){
 
-        product = session.query(Product).filter_by(product_id=product_id).first()
+    let products = await apiGet("/inventory/");
 
-        if not product:
-            session.close()
-            return {"error": "Product not found"}
+    let product = products.find(p =>
+        p.product_id == productId
+    );
 
-        session.delete(product)
-        session.commit()
-        session.close()
+    if(!product) return;
 
-        return {"message": "Product deleted successfully"}
+    document.getElementById("modal-title").innerText = "Product Details";
+
+    document.getElementById("modal-body").innerHTML = `
+        <p><strong>Product ID:</strong> ${product.id}</p>
+        <p><strong>Name:</strong> ${product.name}</p>
+        <p><strong>Price:</strong> $${product.price}</p>
+        <p><strong>Quantity:</strong> ${product.qty}</p>
+        <p><strong>Threshold:</strong> ${product.reorder_threshold || "N/A"}</p>
+        <p><strong>Category:</strong> ${product.category}</p>
+    `;
+
+    document.getElementById("modal-save-btn").style.display = "none";
+
+    openModal();
+}
+
+//---------------------------------------------
+// MODAL HELPERS
+//---------------------------------------------
+function openModal(){
+    document.getElementById("modal").classList.remove("hidden");
+}
+
+function closeModal(){
+    document.getElementById("modal").classList.add("hidden");
+    document.getElementById("modal-save-btn").style.display = "inline-block";
+}
+
+//---------------------------------------------
+// EVENT LISTENERS
+//---------------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+
+    loadProducts();
+
+    document.getElementById("add-product-btn")
+        .addEventListener("click", openAddProductModal);
+
+    document.getElementById("edit-product-btn")
+        .addEventListener("click", openSelectProductForEdit);
+
+    document.getElementById("remove-product-btn")
+        .addEventListener("click", openSelectProductForDelete);
+
+});
+
+function markError(fieldId) {
+    const el = document.getElementById(fieldId);
+    if (!el) return;
+
+    el.classList.add("input-error");
+
+    el.addEventListener("input", () => {
+        el.classList.remove("input-error");
+        clearError();
+    });
+}
+
+function showFormError(message) {
+    let banner = document.getElementById("form-error");
+
+    if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "form-error";
+        banner.className = "error-banner";
+
+        document.getElementById("modal-body")
+            .prepend(banner);
+    }
+
+    banner.innerText = message;
+}
+
+function clearError() {
+    const b = document.getElementById("form-error");
+    if (b) b.remove();
+}
