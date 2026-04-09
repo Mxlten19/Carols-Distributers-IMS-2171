@@ -230,7 +230,7 @@ async function openSelectProductForDelete() {
 
     document.getElementById("modal-save-btn").onclick = () => {
         let id = document.getElementById("product-select").value;
-        openDeleteProductModal(id);
+        setTimeout(() => openDeleteProductModal(id), 0);
     };
 
     openModal();
