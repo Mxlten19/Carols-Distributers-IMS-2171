@@ -48,9 +48,8 @@ class InventoryControl:
     # ------------------------------------------------------------
     # ADD PRODUCT
     # Generates product IDs like BEV_001, BEV_002, FOO_001, etc.
+    # Rejects duplicates by name (case-insensitive).
     # ------------------------------------------------------------
-    
-
     @staticmethod
     def add_product(data, user_id):
         session = SessionLocal()
@@ -70,6 +69,14 @@ class InventoryControl:
             threshold = int(threshold)
         except (TypeError, ValueError):
             threshold = 0
+
+        # ---- FIX: Duplicate name check (case-insensitive) ----
+        existing = session.query(Product).filter(
+            Product.name.ilike(name.strip())
+        ).first()
+        if existing:
+            session.close()
+            return {"error": f"A product named '{name}' already exists. Please use a different name."}
 
         # ---- Validate category ----
         category = session.query(Category).filter_by(name=category_name).first()
@@ -182,7 +189,6 @@ class InventoryControl:
         session.commit()
 
         # ---- Alert check ----
-
         AlertControl.check_low_stock(product.product_id)
 
         session.close()

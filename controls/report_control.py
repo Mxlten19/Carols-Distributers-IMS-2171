@@ -1,3 +1,4 @@
+from entities.connection import SessionLocal   # FIX: was missing, caused "SessionLocal not defined"
 from entities.models import Product
 from fpdf import FPDF
 import os
