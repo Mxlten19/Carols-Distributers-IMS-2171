@@ -215,43 +215,25 @@ async function updateProduct(id){
 async function openSelectProductForDelete() {
     let products = await apiGet("/inventory/");
 
-    let dropdown = `
+    document.getElementById("modal-title").innerText = "Remove Product";
+
+    document.getElementById("modal-body").innerHTML = `
         <select id="product-select" class="input">
             ${products.map(p =>
                 `<option value="${p.product_id}">${p.name}</option>`
             ).join("")}
         </select>
+        <p style="margin-top:12px; color:#c0392b; font-weight:bold;">
+            Are you sure you want to delete this product? This cannot be undone.
+        </p>
     `;
 
-    document.getElementById("modal-title").innerText = "Select Product to Remove";
-    document.getElementById("modal-body").innerHTML = dropdown;
-
-    document.getElementById("modal-save-btn").onclick = null;
-
-    document.getElementById("modal-save-btn").onclick = () => {
-        let id = document.getElementById("product-select").value;
-        setTimeout(() => openDeleteProductModal(id), 0);
-    };
-
-    openModal();
-}
-
-
-// ---------------------------------------------
-// DELETE CONFIRMATION
-// ---------------------------------------------
-function openDeleteProductModal(id) {
-
-    document.getElementById("modal-title").innerText = "Confirm Delete";
-    document.getElementById("modal-body").innerHTML =
-        `<p>Are you sure you want to delete this product?</p>`;
-
-    // Ensure the save button is always visible in the confirmation step
     document.getElementById("modal-save-btn").style.display = "inline-block";
-
-    document.getElementById("modal-save-btn").onclick = null;
-
-    document.getElementById("modal-save-btn").onclick = () => deleteProduct(id);
+    document.getElementById("modal-save-btn").innerText = "Delete";
+    document.getElementById("modal-save-btn").onclick = async () => {
+        let id = document.getElementById("product-select").value;
+        await deleteProduct(id);
+    };
 
     openModal();
 }
@@ -263,16 +245,16 @@ function openDeleteProductModal(id) {
 async function deleteProduct(id) {
     let res = await apiDelete(`/inventory/product/${id}`);
 
-    if(res.error){
-        alert(res.error);
+    if (!res || res.error) {
+        alert(res ? res.error : "Delete failed. Please try again.");
         return;
     }
 
-    alert(res.message);   
+    alert(res.message);
 
+    document.getElementById("modal-save-btn").innerText = "Save";
     closeModal();
     loadProducts();
-
 }
 
 
