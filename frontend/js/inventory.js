@@ -246,6 +246,9 @@ function openDeleteProductModal(id) {
     document.getElementById("modal-body").innerHTML =
         `<p>Are you sure you want to delete this product?</p>`;
 
+    // Ensure the save button is always visible in the confirmation step
+    document.getElementById("modal-save-btn").style.display = "inline-block";
+
     document.getElementById("modal-save-btn").onclick = null;
 
     document.getElementById("modal-save-btn").onclick = () => deleteProduct(id);
