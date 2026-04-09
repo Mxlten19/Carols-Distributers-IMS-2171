@@ -189,3 +189,18 @@ class ReportService:
             return False
         except:
             return False
+        
+def init_report_scheduler():
+    from apscheduler.schedulers.background import BackgroundScheduler
+    try:
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            ReportService.generate_monthly_automatic_report,  # method on the control
+            'cron', day=1, hour=6, minute=0,
+            name="monthly_inventory_report"
+        )
+        scheduler.start()
+        return scheduler
+    except Exception as e:
+        print(f"[Report Scheduler] Error: {e}")
+        return None
