@@ -1,7 +1,7 @@
-from database.connection import SessionLocal
-from database.models import User
-from utils.password_hash import verify_password
-from utils.jwt_helper import create_token
+from entities.connection import SessionLocal
+from entities.models import User
+from controls.password_hash import verify_password
+from controls.jwt_helper import create_token
 from datetime import datetime, timedelta
 
 
@@ -85,6 +85,7 @@ class AuthService:
                 "token": token,
                 "role": user.role.role_name,
                 "username": user.username
+                "user_id": user.user_id
             }
 
         finally:

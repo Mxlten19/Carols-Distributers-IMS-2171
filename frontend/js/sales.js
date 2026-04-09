@@ -137,7 +137,6 @@ function checkThresholdAlerts(products) {
 // COMPLETE SALE (Send to backend)
 //---------------------------------------------
 async function completeSale() {
-
     if (cart.length === 0) {
         alert("Cart is empty!");
         return;
@@ -148,26 +147,25 @@ async function completeSale() {
         qty: i.qty
     }));
 
-    // pull correct user id from JWT
-    let tokenPayload = JSON.parse(atob(localStorage.token.split('.')[1]));
-
     let user_id = localStorage.getItem("user_id");
     let res = await apiPost("/sales/", { cashier_id: user_id, items });
-        cashier_id: tokenPayload.user_id,
-        items
-    });
 
-    if(res.error){
+    if (res.error) {
         alert(res.error);
         return;
     }
 
     alert("Sale completed successfully! Opening receipt...");
-
     window.open(
         `${API_BASE}/sales/receipt/${res.receipt}?token=${localStorage.getItem("token")}`,
         "_blank"
     );
+
+    cart = [];
+    renderCart();
+    productsList = await apiGet("/inventory/");
+    renderProductList(productsList);
+    checkThresholdAlerts(productsList);
 
 
 

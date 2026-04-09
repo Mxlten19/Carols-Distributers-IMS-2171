@@ -1,9 +1,9 @@
-from database.connection import SessionLocal
-from database.models import SaleTransaction, SaleItem, Product
-from utils.pdf_generator import generate_receipt
-from services.alert_service import AlertService
+from entities.connection import SessionLocal
+from entities.models import SaleTransaction, SaleItem, Product
+from controls.pdf_generator import generate_receipt
+from controls.alert_control import AlertControl
 
-class SalesService:
+class SalesControl:
 
     @staticmethod
     def create_sale(cashier_id, items):

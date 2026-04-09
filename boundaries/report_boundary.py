@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, send_file, send_from_directory, jsonify, request
 import os
 from datetime import datetime
-from services.report_service import ReportService
+from controls.report_control import ReportService, init_report_scheduler
 from apscheduler.schedulers.background import BackgroundScheduler
-from utils.auth_middleware import token_required
+from boundaries.auth_middleware import token_required
 
 report_bp = Blueprint("reports", __name__)
 
@@ -187,48 +187,6 @@ def report_details(filename):
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
-# ============================================
-# MONTHLY AUTOMATIC REPORT SCHEDULER
-# ============================================
-def generate_monthly_automatic_report():
-    """Function called by scheduler on 1st of every month"""
-    print(f"[{datetime.now()}] Generating monthly automatic report...")
-    
-    # Set date to 1st of current month
-    report_date = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    
-    try:
-        result = ReportService.generate_inventory_pdf(report_date)
-        print(f"[{datetime.now()}] Monthly report generated: {result['filename']}")
-    except Exception as e:
-        print(f"[{datetime.now()}] Error generating monthly report: {e}")
-
-# ============================================
-# INITIALIZATION
-# ============================================
-def init_report_scheduler():
-    """Initialize the scheduler for automatic monthly reports"""
-    try:
-        scheduler = BackgroundScheduler()
-        
-        # Schedule monthly report on 1st day of month at 6:00 AM
-        scheduler.add_job(
-            generate_monthly_automatic_report,
-            'cron',
-            day=1,
-            hour=6,
-            minute=0,
-            name="monthly_inventory_report"
-        )
-        
-        scheduler.start()
-        print("[Report Scheduler] Started - Monthly reports will generate on 1st of each month at 6:00 AM")
-        
-        return scheduler
-    except Exception as e:
-        print(f"[Report Scheduler] Error: {e}")
-        return None
 
 # Create reports directory if it doesn't exist
 os.makedirs("reports", exist_ok=True)

@@ -1,5 +1,4 @@
-from database.connection import SessionLocal
-from database.models import Product
+from entities.models import Product
 from fpdf import FPDF
 import os
 from datetime import datetime

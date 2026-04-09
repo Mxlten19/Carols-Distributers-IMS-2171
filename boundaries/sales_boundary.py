@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from services.sales_service import SalesService
-from utils.auth_middleware import token_required
+from controls.sales_control import SalesControl
+from boundaries.auth_middleware import token_required   
 from flask import send_from_directory
 import os
 
@@ -12,7 +12,7 @@ def make_sale():
     data = request.json
 
     return jsonify(
-        SalesService.create_sale(
+        SalesControl.create_sale(
             cashier_id=data["cashier_id"],    
             items=data["items"]
         )

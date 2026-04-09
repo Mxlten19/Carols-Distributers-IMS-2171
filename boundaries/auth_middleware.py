@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import request, jsonify
-from utils.jwt_helper import decode_token
+from controls.jwt_helper import decode_token
 
 def token_required(allowed_roles=None):
     def decorator(fn):

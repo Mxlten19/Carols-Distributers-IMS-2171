@@ -1,6 +1,6 @@
-from database.connection import SessionLocal
-from database.models import Product, Category
-from services.alert_service import AlertService
+from entities.connection import SessionLocal
+from entities.models import Product, Category
+from controls.alert_control import AlertControl
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
