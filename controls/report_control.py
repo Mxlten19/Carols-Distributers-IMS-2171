@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 import json
 
-class ReportService:
+class ReportControl:
     
     @staticmethod
     def inventory_report():
@@ -46,7 +46,7 @@ class ReportService:
             report_date = datetime.now()
         
         # Get inventory data
-        inventory_data = ReportService.inventory_report()
+        inventory_data = ReportControl.inventory_report()
         
         # Create PDF
         pdf = FPDF('L', 'mm', 'A4')
@@ -194,7 +194,7 @@ def init_report_scheduler():
     try:
         scheduler = BackgroundScheduler()
         scheduler.add_job(
-            ReportService.generate_monthly_automatic_report,  # method on the control
+            ReportControl.generate_monthly_automatic_report,  # method on the control
             'cron', day=1, hour=6, minute=0,
             name="monthly_inventory_report"
         )

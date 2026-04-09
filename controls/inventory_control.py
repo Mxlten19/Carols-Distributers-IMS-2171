@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
 
-class InventoryService:
+class InventoryControl:
 
     # ------------------------------------------------------------
     # GET ALL PRODUCTS

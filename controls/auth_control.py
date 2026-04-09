@@ -5,7 +5,7 @@ from controls.jwt_helper import create_token
 from datetime import datetime, timedelta
 
 
-class AuthService:
+class AuthControl:
 
     MAX_ATTEMPTS = 3
     LOCK_TIME = timedelta(seconds=60)

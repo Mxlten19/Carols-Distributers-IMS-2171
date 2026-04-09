@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, send_file, send_from_directory, jsonify, request
 import os
 from datetime import datetime
-from controls.report_control import ReportService, init_report_scheduler
+from controls.report_control import ReportControl as ReportService, init_report_scheduler
 from apscheduler.schedulers.background import BackgroundScheduler
 from boundaries.auth_middleware import token_required
 
