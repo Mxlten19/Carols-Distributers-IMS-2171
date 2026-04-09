@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.auth_service import AuthService
+from controls.auth_control import AuthControl
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -8,5 +8,5 @@ def login_route():
     data = request.get_json() or {}
     username = data.get("username", "")
     password = data.get("password", "")
-    result = AuthService.login(username, password)
+    result = AuthControl.login(username, password)
     return jsonify(result)
