@@ -118,7 +118,7 @@ class InventoryControl:
             return {"error": "A product with that name already exists."}
 
         # ---- Alert check ----
-        AlertService.check_low_stock(product.product_id)
+        AlertControl.check_low_stock(product.product_id)
 
         session.close()
         return {
@@ -183,7 +183,7 @@ class InventoryControl:
 
         # ---- Alert check ----
 
-        AlertService.check_low_stock(product.product_id)
+        AlertControl.check_low_stock(product.product_id)
 
         session.close()
         return {"message": "Product updated successfully"}
@@ -207,4 +207,3 @@ class InventoryControl:
         session.close()
 
         return {"message": "Product deleted successfully"}
-

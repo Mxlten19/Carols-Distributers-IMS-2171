@@ -51,8 +51,8 @@ class AuthControl:
                 user.failed_attempts += 1
 
                 # LOCK ACCOUNT IF LIMIT HIT
-                if user.failed_attempts >= AuthService.MAX_ATTEMPTS:
-                    user.locked_until = now + AuthService.LOCK_TIME
+                if user.failed_attempts >= AuthControl.MAX_ATTEMPTS:
+                    user.locked_until = now + AuthControl.LOCK_TIME
 
                     session.commit()
 
@@ -66,7 +66,7 @@ class AuthControl:
 
                 return {
                     "error": "Invalid username or password.",
-                    "attempts_left": AuthService.MAX_ATTEMPTS - user.failed_attempts
+                    "attempts_left": AuthControl.MAX_ATTEMPTS - user.failed_attempts
                 }
 
             # -------------------------

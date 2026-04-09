@@ -33,7 +33,7 @@ class SalesControl:
 
             product.current_quantity -= item["qty"]
 
-            AlertService.check_low_stock(product.product_id)
+            AlertControl.check_low_stock(product.product_id)
 
             result_items.append({
                 "name": product.name,
