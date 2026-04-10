@@ -218,3 +218,4 @@ class InventoryControl:
         session.close()
 
         return {"message": "Product deleted successfully"}
+
