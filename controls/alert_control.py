@@ -56,6 +56,14 @@ class AlertControl:
                 )
                 session.add(alert)
                 session.commit()
+        else:
+            # Stock is back above threshold — resolve any active alert
+            active_alert = session.query(Alert).filter_by(
+                product_id=product_id, status="active"
+            ).first()
+            if active_alert:
+                active_alert.status = "RESOLVED"
+                session.commit()
         session.close()
 
     @staticmethod
