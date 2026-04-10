@@ -18,8 +18,8 @@ class InventoryControl:
         data = []
         for p in products:
             data.append({
-                "product_id": p.product_id,
-                "id": p.code,
+                "product_id": p.product_id,          # DB numeric id
+                "id": p.code,                        # Custom display ID: BEV_001
                 "name": p.name,
                 "category": p.category.name if p.category else "",
                 "price": p.price,
@@ -48,8 +48,9 @@ class InventoryControl:
     # ------------------------------------------------------------
     # ADD PRODUCT
     # Generates product IDs like BEV_001, BEV_002, FOO_001, etc.
-    # Rejects duplicates by name (case-insensitive).
     # ------------------------------------------------------------
+    
+
     @staticmethod
     def add_product(data, user_id):
         session = SessionLocal()
@@ -69,14 +70,6 @@ class InventoryControl:
             threshold = int(threshold)
         except (TypeError, ValueError):
             threshold = 0
-
-        # ---- Duplicate name check (case-insensitive) ----
-        existing = session.query(Product).filter(
-            Product.name.ilike(name.strip())
-        ).first()
-        if existing:
-            session.close()
-            return {"error": f"A product named '{name}' already exists. Please use a different name."}
 
         # ---- Validate category ----
         category = session.query(Category).filter_by(name=category_name).first()
@@ -163,6 +156,7 @@ class InventoryControl:
 
             product.category_id = category.category_id
 
+
         # ---- Field updates ----
         if "name" in data:
             product.name = data["name"]
@@ -188,6 +182,7 @@ class InventoryControl:
         session.commit()
 
         # ---- Alert check ----
+
         AlertControl.check_low_stock(product.product_id)
 
         session.close()
@@ -206,6 +201,17 @@ class InventoryControl:
         if not product:
             session.close()
             return {"error": "Product not found"}
+
+        from entities.models import SaleItem, Alert
+        
+        # check if product has sale history
+        has_sales = session.query(SaleItem).filter_by(product_id=product_id).first()
+        if has_sales:
+            session.close()
+            return {"error": f"Cannot delete '{product.name}' — it has existing sales records. Deactivate it instead by setting quantity to 0."}
+
+        # delete any alerts linked to this product first
+        session.query(Alert).filter_by(product_id=product_id).delete()
 
         session.delete(product)
         session.commit()
